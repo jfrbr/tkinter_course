@@ -1,5 +1,5 @@
 import tkinter
-from tkinter import BOTH, HORIZONTAL
+from tkinter import BOTH, HORIZONTAL, CURRENT
 
 #Define window
 root = tkinter.Tk()
@@ -15,6 +15,36 @@ root.resizable(0,0)
 time = 0
 
 #Define functions
+def move(event):
+    """Drage the balls vertically on the canvas to set the position"""
+
+    #If the current object clicked has the "BALL" tag, we should allow it to be moved
+    if "BALL" in main_canvas.gettags(CURRENT):
+
+        #Record the x position and keep it the same
+        x1 = main_canvas.coords(CURRENT)[0]
+        x2 = main_canvas.coords(CURRENT)[2]
+
+        #Change the coords of the CURRENT object based on the event.y position of the mouse. Recall the ball has size 10.
+        main_canvas.coords(CURRENT, x1, event.y, x2, event.y+10)
+
+        #Attempt to not move the ball off the canvas. CURRENT[3] is y2 coord
+        #Above the top of the screen
+        if main_canvas.coords(CURRENT)[3] < 15:
+            main_canvas.coords(CURRENT, x1, 5, x2, 15)
+        
+        #Below the bottom of the screen
+        elif main_canvas.coords(CURRENT)[3] > 415:
+            main_canvas.coords(CURRENT, x1, 405, x2, 415)
+    
+    #Update the height label for each ball
+    update_height()
+
+
+def update_height():
+    """Update the height labels for each balls"""
+    for i in range(1,5):
+        heights["height_%d" % i].config(text="Height: " + str(round(415- main_canvas.coords(balls['ball_%d' %i])[3],2)))
 
 
 #Define layout
@@ -36,10 +66,10 @@ line_3 = main_canvas.create_line(300, 0, 300, 415)
 line_4 = main_canvas.create_line(400, 0, 400, 415)
 
 balls = {}
-balls['ball_1'] = main_canvas.create_oval(45, 405, 55, 415, fill='RED')
-balls['ball_2'] = main_canvas.create_oval(145, 405, 155, 415, fill='GREEN')
-balls['ball_3'] = main_canvas.create_oval(245, 405, 255, 415, fill='BLUE')
-balls['ball_4'] = main_canvas.create_oval(345, 405, 355, 415, fill='YELLOW')
+balls['ball_1'] = main_canvas.create_oval(45, 405, 55, 415, fill='RED', tag="BALL")
+balls['ball_2'] = main_canvas.create_oval(145, 405, 155, 415, fill='GREEN', tag="BALL")
+balls['ball_3'] = main_canvas.create_oval(245, 405, 255, 415, fill='BLUE', tag="BALL")
+balls['ball_4'] = main_canvas.create_oval(345, 405, 355, 415, fill='YELLOW', tag="BALL")
 
 
 
@@ -91,6 +121,9 @@ run_button.grid(row=4, column=2,pady=(10,0), sticky="WE")
 graph_button.grid(row=4, column=3,pady=(10,0), sticky="WE")
 reset_button.grid(row=4, column=4,pady=(10,0), sticky="WE")
 quit_button.grid(row=5, column=1,columnspan=4, sticky="WE")
+
+#Make each ball 'dragable' in the vertical direction
+root.bind('<B1-Motion>', move)
 
 #Run root window's main loop
 root.mainloop()
