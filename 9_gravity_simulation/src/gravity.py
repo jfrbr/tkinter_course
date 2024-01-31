@@ -1,5 +1,6 @@
 import tkinter
-from tkinter import BOTH, HORIZONTAL, CURRENT
+from tkinter import BOTH, HORIZONTAL, CURRENT, END
+from matplotlib import pyplot
 
 #Define window
 root = tkinter.Tk()
@@ -13,6 +14,11 @@ root.resizable(0,0)
 
 #Define global variables
 time = 0
+data = {}
+
+for i in range(1,5):
+    data['data_%d' % i] = []
+
 
 #Define functions
 def move(event):
@@ -46,6 +52,104 @@ def update_height():
     for i in range(1,5):
         heights["height_%d" % i].config(text="Height: " + str(round(415- main_canvas.coords(balls['ball_%d' %i])[3],2)))
 
+
+def step(t):
+    """Advance the ball one step based on the time slider value of t"""
+    global time
+
+    #loop through all 4 balls
+    for i in range(1,5):
+        #DO the PHYSICS! Negate a and v because canvas y values increase as you move down
+        a = -1*float(accelerations['a_%d' % i].get())
+        v = -1*float(velocities['v_%d' %i].get())
+        d = v*t + .5*a*t**2
+
+
+        #Get the x coords for the current ball. These remain constant.
+        x1 = main_canvas.coords(balls['ball_%d' % i])[0]
+        x2 = main_canvas.coords(balls['ball_%d' % i])[2]
+
+        #Move the given ball and create a dash line to mark the new position 
+        if main_canvas.coords(balls['ball_%d' % i])[3] + d <= 415:
+            main_canvas.move(balls['ball_%d' % i], 0, d)
+            y2 = main_canvas.coords(balls['ball_%d' % i])[3]
+            #Draw dash line at bottom of ball
+            main_canvas.create_line(x1, y2, x2, y2,  tag="DASH")
+        #The ball has hit the ground
+        else:
+            main_canvas.coords(balls['ball_%d' % i], x1, 405, x2, 415)
+        
+        #Do more physics
+        vf = v + a*t
+        #Update velocity values for each ball
+        velocities['v_%d' % i].delete(0,END)
+        velocities['v_%d' % i].insert(0,str(round(-1*vf, 2)))
+
+        #Add data for the step to the data dict
+        data['data_%d' % i].append((time, 415 - main_canvas.coords(balls['ball_%d' % i])[3]))
+
+
+    #Update heights for the given time interval
+    update_height()
+
+    #Update time 
+    time += t
+
+def run():
+    """Run the enrite sim until balls are at the ground or above the screen"""
+    #Balls may start on the ground or at the top of the screen so call step() at least once
+    step(t_slider.get())
+
+    #Run step() until all balls have hit the ground or left the screen based of the y2 coord [3]
+    while 15 < main_canvas.coords(balls['ball_1'])[3] < 415 or 15 < main_canvas.coords(balls['ball_2'])[3] < 415 or 15 < main_canvas.coords(balls['ball_3'])[3] < 415 or 15 < main_canvas.coords(balls['ball_4'])[3] < 415:
+        step(t_slider.get())
+
+def graph():
+    """Graph distance v time for 4 balls"""
+    #Colors of the balls corresponds to colors of the graph
+    colors = ['red', 'green', 'blue', 'yellow']
+
+    for i in range(1,5):
+        #Initialize x,y values
+        x = []
+        y = []
+        #Add corresponding data to x,y values
+        for data_list in data['data_%d' % i]:
+            x.append(data_list[0])
+            y.append(data_list[1])
+        
+        #Plot data in corresponding color
+        pyplot.plot(x, y, color=colors[i-1])
+
+    #Graph formatting
+    pyplot.title("Distance vs Time")
+    pyplot.xlabel("Time")
+    pyplot.xlabel("Distance")
+    pyplot.show()
+
+def reset():
+    """Erase all 'DASH' tags from canvas, set balls back to the ground and reset entry fields"""
+    global time
+    time = 0
+    main_canvas.delete("DASH")
+
+    #Clear each ball
+    for i in range(1,5):
+        #clear and set the velocity and acc
+        velocities['v_%d' % i ].delete(0,END)
+        velocities['v_%d' % i ].insert(0,'0')
+        accelerations['a_%d' % i].delete(0,END)
+        accelerations['a_%d' % i].insert(0,'0')
+
+
+        #Reset ball to starting position
+        main_canvas.coords(balls['ball_%d' % i], 45+(i-1)*100, 405, 55+(i-1)*100, 415)
+
+        #Clear data
+        data['data_%d' % i].clear()
+    
+    update_height()
+    t_slider.set(1)
 
 #Define layout
 #Create frames
@@ -110,10 +214,10 @@ t_slider.set(1)
 
 
 #Buttons
-step_button = tkinter.Button(input_frame, text="Step")
-run_button = tkinter.Button(input_frame, text="Run")
-graph_button = tkinter.Button(input_frame, text="Graph")
-reset_button = tkinter.Button(input_frame, text="Reset")
+step_button = tkinter.Button(input_frame, text="Step", command=lambda:step(t_slider.get()))
+run_button = tkinter.Button(input_frame, text="Run", command=run)
+graph_button = tkinter.Button(input_frame, text="Graph", command=graph)
+reset_button = tkinter.Button(input_frame, text="Reset", command=reset)
 quit_button = tkinter.Button(input_frame, text="Quit", command=root.destroy)
 
 step_button.grid(row=4, column=1,pady=(10,0), sticky="WE")
